@@ -1,7 +1,7 @@
 --[[
     Prison Life Hub - Mobile Optimized
-    UI: OrionLib (Compact Mobile UI)
-    Mobile Aimbot included
+    UI: Built-in ScreenGui (No external libraries needed)
+    Works on Delta mobile executor
     Made by xtel
 ]]
 
@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TeleportService   = game:GetService("TeleportService")
 local HttpService       = game:GetService("HttpService")
 local UserInputService  = game:GetService("UserInputService")
+local TweenService      = game:GetService("TweenService")
 local LocalPlayer       = Players.LocalPlayer
 local Teams             = game:GetService("Teams")
 local Camera            = workspace.Camera
@@ -48,29 +49,6 @@ local Settings = {
     AimbotPart      = "Head",
     AimbotTeamCheck = true,
 }
-
--- ═══════════════════════════════════════════════════════════════════════════
--- LOAD ORION (Mobile Compact UI)
--- ═══════════════════════════════════════════════════════════════════════════
-
-local OrionLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Orion/main/source'))()
-
-OrionLib:MakeWindow({
-    Name            = "Prison Life Hub",
-    HidePremium     = true,
-    SaveConfig      = false,
-    ConfigFolder    = "PrisonHub",
-    IntroEnabled    = true,
-    IntroText       = "Prison Life Hub",
-    CloseCallback   = function() end,
-})
-
--- Tabs
-local AimbotTab  = OrionLib:MakeTab({ Name = "Aimbot",   Icon = "rbxassetid://4483362458", PremiumOnly = false })
-local CombatTab  = OrionLib:MakeTab({ Name = "Combat",   Icon = "rbxassetid://4483362458", PremiumOnly = false })
-local WeaponsTab = OrionLib:MakeTab({ Name = "Weapons",  Icon = "rbxassetid://4483362458", PremiumOnly = false })
-local UtilityTab = OrionLib:MakeTab({ Name = "Utility",  Icon = "rbxassetid://4483362458", PremiumOnly = false })
-local ServerTab  = OrionLib:MakeTab({ Name = "Server",   Icon = "rbxassetid://4483362458", PremiumOnly = false })
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- REMOTES
@@ -432,196 +410,445 @@ local function JoinLowestPingServer()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- ORION UI ELEMENTS
+-- CUSTOM UI (No external libraries - pure ScreenGui)
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- ── AIMBOT TAB ──
-AimbotTab:AddSection({ Name = "Aimbot" })
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "PrisonHubUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = game:GetService("CoreGui")
 
-AimbotTab:AddToggle({
-    Name    = "Enable Aimbot",
-    Default = false,
-    Callback = function(val)
-        Toggles.Aimbot = val
-        if val then StartAimbot() else StopAimbot() end
-        OrionLib:MakeNotification({
-            Name     = "Aimbot",
-            Content  = val and "Aimbot ON" or "Aimbot OFF",
-            Image    = "rbxassetid://4483362458",
-            Time     = 2,
-        })
-    end,
-})
+-- Colors
+local C = {
+    BG        = Color3.fromRGB(15, 15, 20),
+    Header    = Color3.fromRGB(20, 20, 28),
+    Accent    = Color3.fromRGB(80, 120, 255),
+    AccentDim = Color3.fromRGB(50, 80, 180),
+    Toggle_ON  = Color3.fromRGB(60, 200, 100),
+    Toggle_OFF = Color3.fromRGB(60, 60, 75),
+    Text      = Color3.fromRGB(240, 240, 255),
+    SubText   = Color3.fromRGB(150, 150, 175),
+    Button    = Color3.fromRGB(35, 35, 50),
+    ButtonHov = Color3.fromRGB(50, 50, 70),
+    Section   = Color3.fromRGB(25, 25, 35),
+    Tab_ON    = Color3.fromRGB(80, 120, 255),
+    Tab_OFF   = Color3.fromRGB(25, 25, 38),
+}
 
-AimbotTab:AddToggle({
-    Name    = "Silent Aim",
-    Default = false,
-    Callback = function(val) Toggles.AimbotSilent = val end,
-})
+-- Helpers
+local function make(class, props, parent)
+    local inst = Instance.new(class)
+    for k,v in pairs(props) do inst[k] = v end
+    if parent then inst.Parent = parent end
+    return inst
+end
 
-AimbotTab:AddToggle({
-    Name    = "Team Check",
-    Default = true,
-    Callback = function(val) Settings.AimbotTeamCheck = val end,
-})
+local function corner(r, p)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, r or 6)
+    c.Parent = p
+    return c
+end
 
-AimbotTab:AddSection({ Name = "Settings" })
+local function stroke(color, thickness, p)
+    local s = Instance.new("UIStroke")
+    s.Color = color or Color3.fromRGB(60,60,80)
+    s.Thickness = thickness or 1
+    s.Parent = p
+    return s
+end
 
-AimbotTab:AddSlider({
-    Name    = "FOV Radius",
-    Min     = 50,
-    Max     = 500,
-    Default = 150,
-    Color   = Color3.fromRGB(255, 80, 80),
-    Increment = 10,
-    Callback = function(val) Settings.AimbotFOV = val end,
-})
+local function notify(msg)
+    local notif = make("Frame", {
+        Size = UDim2.new(0, 220, 0, 40),
+        Position = UDim2.new(1, -230, 1, -60),
+        BackgroundColor3 = C.Header,
+        BackgroundTransparency = 0.1,
+        ZIndex = 100,
+    }, ScreenGui)
+    corner(8, notif)
+    stroke(C.Accent, 1, notif)
+    make("TextLabel", {
+        Size = UDim2.new(1, -10, 1, 0),
+        Position = UDim2.new(0, 10, 0, 0),
+        BackgroundTransparency = 1,
+        Text = msg,
+        TextColor3 = C.Text,
+        TextSize = 13,
+        Font = Enum.Font.GothamMedium,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 101,
+    }, notif)
+    task.delay(2.5, function()
+        TweenService:Create(notif, TweenInfo.new(0.3), {BackgroundTransparency=1}):Play()
+        task.wait(0.3)
+        notif:Destroy()
+    end)
+end
 
-AimbotTab:AddSlider({
-    Name    = "Smoothing",
-    Min     = 1,
-    Max     = 10,
-    Default = 3,
-    Color   = Color3.fromRGB(255, 80, 80),
-    Increment = 1,
-    Callback = function(val) Settings.AimbotSmoothing = val / 10 end,
-})
+-- ── Main Frame ──
+local isOpen = true
+local MainFrame = make("Frame", {
+    Size = UDim2.new(0, 300, 0, 400),
+    Position = UDim2.new(0.5, -150, 0.5, -200),
+    BackgroundColor3 = C.BG,
+    BorderSizePixel = 0,
+    ZIndex = 2,
+}, ScreenGui)
+corner(10, MainFrame)
+stroke(C.Accent, 1.5, MainFrame)
 
-AimbotTab:AddDropdown({
-    Name    = "Target Part",
-    Default = "Head",
-    Options = {"Head", "HumanoidRootPart", "Torso", "Upper Torso"},
-    Callback = function(val) Settings.AimbotPart = val end,
-})
-
--- ── COMBAT TAB ──
-CombatTab:AddSection({ Name = "Combat" })
-
-CombatTab:AddToggle({
-    Name    = "Auto Arrest",
-    Default = false,
-    Callback = function(val) Toggles.AutoArrest = val end,
-})
-
-CombatTab:AddToggle({
-    Name    = "Anti-Arrest (JapaDo)",
-    Default = false,
-    Callback = function(val) Toggles.AntiArrest = val end,
-})
-
-CombatTab:AddToggle({
-    Name    = "Anti-Tase",
-    Default = true,
-    Callback = function(val) Toggles.AntiTase = val end,
-})
-
-CombatTab:AddSection({ Name = "Teams" })
-
-CombatTab:AddButton({
-    Name = "Join Criminals",
-    Callback = function()
-        TeamAPI.ChangeTeam(TeamAPI.Teams.Criminals)
-        OrionLib:MakeNotification({ Name="Team", Content="Joined Criminals!", Image="rbxassetid://4483362458", Time=3 })
-    end,
-})
-
-CombatTab:AddButton({
-    Name = "Join Guards",
-    Callback = function()
-        TeamAPI.ChangeTeam(TeamAPI.Teams.Guards)
-        OrionLib:MakeNotification({ Name="Team", Content="Joined Guards!", Image="rbxassetid://4483362458", Time=3 })
-    end,
-})
-
--- ── WEAPONS TAB ──
-WeaponsTab:AddSection({ Name = "Auto Guns" })
-
-WeaponsTab:AddToggle({
-    Name    = "Auto Get Guns",
-    Default = false,
-    Callback = function(val) Toggles.AutoGuns = val end,
-})
-
-WeaponsTab:AddButton({ Name = "Get AK-47",         Callback = function() GetGun("AK-47") end })
-WeaponsTab:AddButton({ Name = "Get Remington 870",  Callback = function() GetGun("Remington 870") end })
-WeaponsTab:AddButton({ Name = "Get M9",             Callback = function() GetGun("M9") end })
-
-WeaponsTab:AddSection({ Name = "Melee" })
-
-WeaponsTab:AddButton({
-    Name = "Break All Toilets",
-    Callback = function()
-        BreakAllToilets()
-        OrionLib:MakeNotification({ Name="Melee", Content="Breaking all toilets!", Image="rbxassetid://4483362458", Time=3 })
-    end,
-})
-
-WeaponsTab:AddToggle({
-    Name    = "Auto Break on Hammer Equip",
-    Default = false,
-    Callback = function(val) Toggles.BreakToilets = val end,
-})
-
--- ── UTILITY TAB ──
-UtilityTab:AddSection({ Name = "Movement" })
-
-UtilityTab:AddToggle({
-    Name    = "Infinite Stamina",
-    Default = false,
-    Callback = function(val)
-        Toggles.InfiniteStamina = val
-        if val and LocalPlayer.Character then
-            local Hum = LocalPlayer.Character:FindFirstChild("Humanoid")
-            if Hum then DisconnectStamina(Hum) end
+-- Make draggable (mobile & PC)
+do
+    local dragging, dragStart, startPos
+    local function update(input)
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(0, startPos.X + delta.X, 0, startPos.Y + delta.Y)
+    end
+    MainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = Vector2.new(MainFrame.AbsolutePosition.X, MainFrame.AbsolutePosition.Y)
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
         end
-    end,
-})
+    end)
+    MainFrame.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            update(input)
+        end
+    end)
+end
 
-UtilityTab:AddToggle({
-    Name    = "Auto Open Doors",
-    Default = false,
-    Callback = function(val) Toggles.OpenDoors = val end,
-})
+-- ── Header ──
+local Header = make("Frame", {
+    Size = UDim2.new(1, 0, 0, 36),
+    BackgroundColor3 = C.Header,
+    BorderSizePixel = 0,
+    ZIndex = 3,
+}, MainFrame)
+corner(10, Header)
 
-UtilityTab:AddToggle({
-    Name    = "Doors NoClip",
-    Default = false,
-    Callback = function(val)
-        Toggles.NoClipDoors = val
-        if val then DoorsHandler() end
-    end,
-})
+make("TextLabel", {
+    Size = UDim2.new(1, -80, 1, 0),
+    Position = UDim2.new(0, 12, 0, 0),
+    BackgroundTransparency = 1,
+    Text = "🔒 Prison Life Hub",
+    TextColor3 = C.Text,
+    TextSize = 14,
+    Font = Enum.Font.GothamBold,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    ZIndex = 4,
+}, Header)
 
-UtilityTab:AddSection({ Name = "Teleport" })
+-- Close/Minimize button
+local CloseBtn = make("TextButton", {
+    Size = UDim2.new(0, 28, 0, 20),
+    Position = UDim2.new(1, -34, 0.5, -10),
+    BackgroundColor3 = Color3.fromRGB(200,60,60),
+    Text = "✕",
+    TextColor3 = Color3.fromRGB(255,255,255),
+    TextSize = 12,
+    Font = Enum.Font.GothamBold,
+    ZIndex = 5,
+}, Header)
+corner(4, CloseBtn)
+CloseBtn.MouseButton1Click:Connect(function()
+    isOpen = not isOpen
+    MainFrame.Size = isOpen and UDim2.new(0,300,0,400) or UDim2.new(0,300,0,36)
+    CloseBtn.Text = isOpen and "✕" or "▼"
+end)
 
-UtilityTab:AddButton({
-    Name = "Teleport to Crim Base",
-    Callback = function()
-        Teleport(CFrame.new(-927,94,2055))
-        OrionLib:MakeNotification({ Name="Teleport", Content="Going to Crim Base!", Image="rbxassetid://4483362458", Time=3 })
-    end,
-})
+-- ── Tab Bar ──
+local TabBar = make("Frame", {
+    Size = UDim2.new(1, -10, 0, 30),
+    Position = UDim2.new(0, 5, 0, 40),
+    BackgroundColor3 = C.Section,
+    BorderSizePixel = 0,
+    ZIndex = 3,
+}, MainFrame)
+corner(6, TabBar)
 
-UtilityTab:AddButton({
-    Name = "Teleport to Yard",
-    Callback = function()
-        Teleport(CFrame.new(832,98,2510))
-        OrionLib:MakeNotification({ Name="Teleport", Content="Going to Yard!", Image="rbxassetid://4483362458", Time=3 })
-    end,
-})
+local TabLayout = Instance.new("UIListLayout")
+TabLayout.FillDirection = Enum.FillDirection.Horizontal
+TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+TabLayout.Padding = UDim.new(0, 2)
+TabLayout.Parent = TabBar
+Instance.new("UIPadding", TabBar).PaddingLeft = UDim.new(0,3)
 
--- ── SERVER TAB ──
-ServerTab:AddSection({ Name = "Server Management" })
+-- ── Content Area ──
+local ContentArea = make("ScrollingFrame", {
+    Size = UDim2.new(1, -10, 1, -82),
+    Position = UDim2.new(0, 5, 0, 76),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+    ScrollBarThickness = 3,
+    ScrollBarImageColor3 = C.Accent,
+    CanvasSize = UDim2.new(0,0,0,0),
+    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+    ZIndex = 3,
+}, MainFrame)
 
-ServerTab:AddButton({
-    Name = "Hop to Lowest Ping Server",
-    Callback = function()
-        OrionLib:MakeNotification({ Name="Server", Content="Finding best server...", Image="rbxassetid://4483362458", Time=4 })
-        task.spawn(JoinLowestPingServer)
-    end,
-})
+local ContentLayout = Instance.new("UIListLayout")
+ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ContentLayout.Padding = UDim.new(0, 4)
+ContentLayout.Parent = ContentArea
+Instance.new("UIPadding", ContentArea).PaddingTop = UDim.new(0,4)
 
-ServerTab:AddLabel(isMobile and "📱 Mobile device detected" or "🖥️ PC device detected")
+-- ═══════════════════════════════════════════════════════════════════════════
+-- UI BUILDER FUNCTIONS
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local Pages = {}
+local CurrentPage = nil
+local TabButtons = {}
+
+local function ShowPage(name)
+    for n, page in pairs(Pages) do
+        page.Visible = (n == name)
+    end
+    for n, btn in pairs(TabButtons) do
+        btn.BackgroundColor3 = (n == name) and C.Tab_ON or C.Tab_OFF
+        btn.TextColor3 = (n == name) and C.Text or C.SubText
+    end
+    CurrentPage = name
+end
+
+local function AddTab(name, icon)
+    local page = make("Frame", {
+        Size = UDim2.new(1, 0, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
+        BackgroundTransparency = 1,
+        Visible = false,
+        ZIndex = 3,
+        LayoutOrder = #Pages + 1,
+    }, ContentArea)
+    local pageLayout = Instance.new("UIListLayout")
+    pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    pageLayout.Padding = UDim.new(0,4)
+    pageLayout.Parent = page
+    Pages[name] = page
+
+    local tabNames = {"Aimbot","Combat","Weapons","Utility","Server"}
+    local tabCount = #tabNames
+    local btn = make("TextButton", {
+        Size = UDim2.new(1/tabCount, -3, 0, 24),
+        BackgroundColor3 = C.Tab_OFF,
+        Text = icon,
+        TextColor3 = C.SubText,
+        TextSize = 11,
+        Font = Enum.Font.GothamMedium,
+        BorderSizePixel = 0,
+        ZIndex = 4,
+    }, TabBar)
+    corner(5, btn)
+    TabButtons[name] = btn
+
+    btn.MouseButton1Click:Connect(function() ShowPage(name) end)
+
+    return page
+end
+
+local function AddSection(page, title, order)
+    local sec = make("Frame", {
+        Size = UDim2.new(1, 0, 0, 22),
+        BackgroundTransparency = 1,
+        ZIndex = 3,
+        LayoutOrder = order or 0,
+    }, page)
+    make("TextLabel", {
+        Size = UDim2.new(1, -10, 1, 0),
+        Position = UDim2.new(0, 8, 0, 0),
+        BackgroundTransparency = 1,
+        Text = title,
+        TextColor3 = C.Accent,
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 4,
+    }, sec)
+    -- divider
+    make("Frame", {
+        Size = UDim2.new(1, -16, 0, 1),
+        Position = UDim2.new(0, 8, 1, -1),
+        BackgroundColor3 = C.AccentDim,
+        BorderSizePixel = 0,
+        ZIndex = 4,
+    }, sec)
+end
+
+local toggleOrder = 0
+local function AddToggle(page, label, default, key, callback)
+    toggleOrder = toggleOrder + 1
+    local row = make("Frame", {
+        Size = UDim2.new(1, 0, 0, 34),
+        BackgroundColor3 = C.Section,
+        BorderSizePixel = 0,
+        ZIndex = 3,
+        LayoutOrder = toggleOrder,
+    }, page)
+    corner(6, row)
+
+    make("TextLabel", {
+        Size = UDim2.new(1, -60, 1, 0),
+        Position = UDim2.new(0, 10, 0, 0),
+        BackgroundTransparency = 1,
+        Text = label,
+        TextColor3 = C.Text,
+        TextSize = 12,
+        Font = Enum.Font.Gotham,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 4,
+    }, row)
+
+    local pill = make("Frame", {
+        Size = UDim2.new(0, 36, 0, 18),
+        Position = UDim2.new(1, -46, 0.5, -9),
+        BackgroundColor3 = default and C.Toggle_ON or C.Toggle_OFF,
+        BorderSizePixel = 0,
+        ZIndex = 4,
+    }, row)
+    corner(9, pill)
+
+    local knob = make("Frame", {
+        Size = UDim2.new(0, 14, 0, 14),
+        Position = default and UDim2.new(1,-16,0.5,-7) or UDim2.new(0,2,0.5,-7),
+        BackgroundColor3 = Color3.fromRGB(255,255,255),
+        BorderSizePixel = 0,
+        ZIndex = 5,
+    }, pill)
+    corner(7, knob)
+
+    local val = default or false
+    Toggles[key] = val
+
+    local btn = make("TextButton", {
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1,
+        Text = "",
+        ZIndex = 6,
+    }, row)
+
+    btn.MouseButton1Click:Connect(function()
+        val = not val
+        Toggles[key] = val
+        TweenService:Create(pill, TweenInfo.new(0.15), {BackgroundColor3 = val and C.Toggle_ON or C.Toggle_OFF}):Play()
+        TweenService:Create(knob, TweenInfo.new(0.15), {Position = val and UDim2.new(1,-16,0.5,-7) or UDim2.new(0,2,0.5,-7)}):Play()
+        if callback then callback(val) end
+    end)
+end
+
+local btnOrder = 100
+local function AddButton(page, label, callback)
+    btnOrder = btnOrder + 1
+    local btn = make("TextButton", {
+        Size = UDim2.new(1, 0, 0, 32),
+        BackgroundColor3 = C.Button,
+        Text = label,
+        TextColor3 = C.Text,
+        TextSize = 12,
+        Font = Enum.Font.GothamMedium,
+        BorderSizePixel = 0,
+        ZIndex = 4,
+        LayoutOrder = btnOrder,
+    }, page)
+    corner(6, btn)
+    stroke(C.AccentDim, 1, btn)
+
+    btn.MouseButton1Click:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3=C.ButtonHov}):Play()
+        task.delay(0.15, function()
+            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3=C.Button}):Play()
+        end)
+        if callback then callback() end
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- BUILD PAGES
+-- ═══════════════════════════════════════════════════════════════════════════
+
+local P_Aimbot  = AddTab("Aimbot",   "🎯")
+local P_Combat  = AddTab("Combat",   "⚔️")
+local P_Weapons = AddTab("Weapons",  "🔫")
+local P_Utility = AddTab("Utility",  "🔧")
+local P_Server  = AddTab("Server",   "🌐")
+
+-- Fix tab button sizes after all tabs added
+for name, btn in pairs(TabButtons) do
+    btn.Size = UDim2.new(0.18, -2, 0, 24)
+end
+
+-- ── AIMBOT PAGE ──
+AddSection(P_Aimbot, "AIMBOT", 1)
+AddToggle(P_Aimbot, "Enable Aimbot", false, "Aimbot", function(val)
+    if val then StartAimbot() else StopAimbot() end
+    notify("Aimbot: " .. (val and "ON ✅" or "OFF ❌"))
+end)
+AddToggle(P_Aimbot, "Silent Aim", false, "AimbotSilent", nil)
+AddToggle(P_Aimbot, "Team Check", true, "AimbotTeamCheck", function(val)
+    Settings.AimbotTeamCheck = val
+end)
+
+-- ── COMBAT PAGE ──
+AddSection(P_Combat, "COMBAT", 1)
+AddToggle(P_Combat, "Auto Arrest", false, "AutoArrest", nil)
+AddToggle(P_Combat, "Anti-Arrest (JapaDo)", false, "AntiArrest", nil)
+AddToggle(P_Combat, "Anti-Tase", true, "AntiTase", nil)
+AddSection(P_Combat, "TEAMS", 10)
+AddButton(P_Combat, "Join Criminals", function()
+    TeamAPI.ChangeTeam(TeamAPI.Teams.Criminals)
+    notify("Joined Criminals! 🔴")
+end)
+AddButton(P_Combat, "Join Guards", function()
+    TeamAPI.ChangeTeam(TeamAPI.Teams.Guards)
+    notify("Joined Guards! 🔵")
+end)
+
+-- ── WEAPONS PAGE ──
+AddSection(P_Weapons, "AUTO GUNS", 1)
+AddToggle(P_Weapons, "Auto Get Guns", false, "AutoGuns", nil)
+AddButton(P_Weapons, "Get AK-47", function() task.spawn(GetGun, "AK-47") notify("Getting AK-47...") end)
+AddButton(P_Weapons, "Get Remington 870", function() task.spawn(GetGun, "Remington 870") notify("Getting Remington 870...") end)
+AddButton(P_Weapons, "Get M9", function() task.spawn(GetGun, "M9") notify("Getting M9...") end)
+AddSection(P_Weapons, "MELEE", 20)
+AddButton(P_Weapons, "Break All Toilets", function() BreakAllToilets() notify("Breaking toilets! 🚽") end)
+AddToggle(P_Weapons, "Auto Break on Hammer", false, "BreakToilets", nil)
+
+-- ── UTILITY PAGE ──
+AddSection(P_Utility, "MOVEMENT", 1)
+AddToggle(P_Utility, "Infinite Stamina", false, "InfiniteStamina", function(val)
+    if val and LocalPlayer.Character then
+        local Hum = LocalPlayer.Character:FindFirstChild("Humanoid")
+        if Hum then DisconnectStamina(Hum) end
+    end
+end)
+AddToggle(P_Utility, "Auto Open Doors", false, "OpenDoors", nil)
+AddToggle(P_Utility, "Doors NoClip", false, "NoClipDoors", function(val)
+    if val then DoorsHandler() end
+end)
+AddSection(P_Utility, "TELEPORT", 20)
+AddButton(P_Utility, "Teleport → Crim Base", function()
+    Teleport(CFrame.new(-927,94,2055))
+    notify("Teleporting to Crim Base...")
+end)
+AddButton(P_Utility, "Teleport → Yard", function()
+    Teleport(CFrame.new(832,98,2510))
+    notify("Teleporting to Yard...")
+end)
+
+-- ── SERVER PAGE ──
+AddSection(P_Server, "SERVER", 1)
+AddButton(P_Server, "Hop to Lowest Ping", function()
+    notify("Finding best server...")
+    task.spawn(JoinLowestPingServer)
+end)
+
+-- Show first tab
+ShowPage("Aimbot")
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- HEARTBEAT LOOPS
@@ -691,13 +918,5 @@ end)
 pcall(function() TeamAPI.ChangeTeam(TeamAPI.Teams.Criminals) end)
 AutoOpenDoors()
 
-OrionLib:MakeNotification({
-    Name    = "Prison Life Hub",
-    Content = (isMobile and "📱 Mobile" or "🖥️ PC") .. " | Loaded! Made by xtel",
-    Image   = "rbxassetid://4483362458",
-    Time    = 5,
-})
-
-OrionLib:Init()
-
-print("Prison Life Hub | OrionLib | Mobile: " .. tostring(isMobile) .. " | user: 2_ll1 | 🇧🇷")
+notify("Prison Life Hub loaded! " .. (isMobile and "📱" or "🖥️"))
+print("Prison Life Hub | Custom UI | Mobile: " .. tostring(isMobile) .. " | user: 2_ll1 | 🇧🇷")
