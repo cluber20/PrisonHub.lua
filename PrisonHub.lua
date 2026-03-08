@@ -1,6 +1,6 @@
 --[[
     Prison Life Hub - Mobile Optimized
-    UI: LinoriaLib (Delta Compatible)
+    UI: OrionLib (Compact Mobile UI)
     Mobile Aimbot included
     Made by xtel
 ]]
@@ -50,38 +50,27 @@ local Settings = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- LOAD LINORIA (Delta Compatible)
+-- LOAD ORION (Mobile Compact UI)
 -- ═══════════════════════════════════════════════════════════════════════════
 
-local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
+local OrionLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Orion/main/source'))()
 
-local Library      = loadstring(game:HttpGet(repo .. 'Library.lua'))()
-local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))()
-local SaveManager  = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
-
-local Window = Library:CreateWindow({
-    Title    = 'Prison Life Hub',
-    Center   = true,
-    AutoShow = true,
+OrionLib:MakeWindow({
+    Name            = "Prison Life Hub",
+    HidePremium     = true,
+    SaveConfig      = false,
+    ConfigFolder    = "PrisonHub",
+    IntroEnabled    = true,
+    IntroText       = "Prison Life Hub",
+    CloseCallback   = function() end,
 })
 
-local Tabs = {
-    Aimbot  = Window:AddTab('Aimbot'),
-    Combat  = Window:AddTab('Combat'),
-    Weapons = Window:AddTab('Weapons'),
-    Utility = Window:AddTab('Utility'),
-    Server  = Window:AddTab('Server'),
-}
-
-local AimbotBox  = Tabs.Aimbot:AddLeftGroupbox('Aimbot')
-local AimbotCfg  = Tabs.Aimbot:AddRightGroupbox('Settings')
-local CombatBox  = Tabs.Combat:AddLeftGroupbox('Combat')
-local TeamsBox   = Tabs.Combat:AddRightGroupbox('Teams')
-local GunsBox    = Tabs.Weapons:AddLeftGroupbox('Auto Guns')
-local MeleeBox   = Tabs.Weapons:AddRightGroupbox('Melee')
-local MoveBox    = Tabs.Utility:AddLeftGroupbox('Movement')
-local TeleBox    = Tabs.Utility:AddRightGroupbox('Teleport')
-local ServerBox  = Tabs.Server:AddLeftGroupbox('Server')
+-- Tabs
+local AimbotTab  = OrionLib:MakeTab({ Name = "Aimbot",   Icon = "rbxassetid://4483362458", PremiumOnly = false })
+local CombatTab  = OrionLib:MakeTab({ Name = "Combat",   Icon = "rbxassetid://4483362458", PremiumOnly = false })
+local WeaponsTab = OrionLib:MakeTab({ Name = "Weapons",  Icon = "rbxassetid://4483362458", PremiumOnly = false })
+local UtilityTab = OrionLib:MakeTab({ Name = "Utility",  Icon = "rbxassetid://4483362458", PremiumOnly = false })
+local ServerTab  = OrionLib:MakeTab({ Name = "Server",   Icon = "rbxassetid://4483362458", PremiumOnly = false })
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- REMOTES
@@ -443,120 +432,141 @@ local function JoinLowestPingServer()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- UI ELEMENTS
+-- ORION UI ELEMENTS
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- AIMBOT TAB
-AimbotBox:AddToggle('Aimbot', {
-    Text    = 'Enable Aimbot',
+-- ── AIMBOT TAB ──
+AimbotTab:AddSection({ Name = "Aimbot" })
+
+AimbotTab:AddToggle({
+    Name    = "Enable Aimbot",
     Default = false,
     Callback = function(val)
         Toggles.Aimbot = val
         if val then StartAimbot() else StopAimbot() end
-        Library:Notify(val and 'Aimbot ON' or 'Aimbot OFF', 2)
+        OrionLib:MakeNotification({
+            Name     = "Aimbot",
+            Content  = val and "Aimbot ON" or "Aimbot OFF",
+            Image    = "rbxassetid://4483362458",
+            Time     = 2,
+        })
     end,
 })
 
-AimbotBox:AddToggle('AimbotSilent', {
-    Text    = 'Silent Aim',
+AimbotTab:AddToggle({
+    Name    = "Silent Aim",
     Default = false,
     Callback = function(val) Toggles.AimbotSilent = val end,
 })
 
-AimbotBox:AddToggle('AimbotTeamCheck', {
-    Text    = 'Team Check',
+AimbotTab:AddToggle({
+    Name    = "Team Check",
     Default = true,
     Callback = function(val) Settings.AimbotTeamCheck = val end,
 })
 
-AimbotCfg:AddSlider('AimbotFOV', {
-    Text     = 'FOV Radius',
-    Default  = 150,
-    Min      = 50,
-    Max      = 500,
-    Rounding = 0,
+AimbotTab:AddSection({ Name = "Settings" })
+
+AimbotTab:AddSlider({
+    Name    = "FOV Radius",
+    Min     = 50,
+    Max     = 500,
+    Default = 150,
+    Color   = Color3.fromRGB(255, 80, 80),
+    Increment = 10,
     Callback = function(val) Settings.AimbotFOV = val end,
 })
 
-AimbotCfg:AddSlider('AimbotSmooth', {
-    Text     = 'Smoothing',
-    Default  = 3,
-    Min      = 1,
-    Max      = 10,
-    Rounding = 0,
+AimbotTab:AddSlider({
+    Name    = "Smoothing",
+    Min     = 1,
+    Max     = 10,
+    Default = 3,
+    Color   = Color3.fromRGB(255, 80, 80),
+    Increment = 1,
     Callback = function(val) Settings.AimbotSmoothing = val / 10 end,
 })
 
-AimbotCfg:AddDropdown('AimbotPart', {
-    Values   = {'Head', 'HumanoidRootPart', 'Torso', 'Upper Torso'},
-    Default  = 1,
-    Text     = 'Target Part',
+AimbotTab:AddDropdown({
+    Name    = "Target Part",
+    Default = "Head",
+    Options = {"Head", "HumanoidRootPart", "Torso", "Upper Torso"},
     Callback = function(val) Settings.AimbotPart = val end,
 })
 
--- COMBAT TAB
-CombatBox:AddToggle('AutoArrest', {
-    Text    = 'Auto Arrest',
+-- ── COMBAT TAB ──
+CombatTab:AddSection({ Name = "Combat" })
+
+CombatTab:AddToggle({
+    Name    = "Auto Arrest",
     Default = false,
     Callback = function(val) Toggles.AutoArrest = val end,
 })
 
-CombatBox:AddToggle('AntiArrest', {
-    Text    = 'Anti-Arrest (JapaDo)',
+CombatTab:AddToggle({
+    Name    = "Anti-Arrest (JapaDo)",
     Default = false,
     Callback = function(val) Toggles.AntiArrest = val end,
 })
 
-CombatBox:AddToggle('AntiTase', {
-    Text    = 'Anti-Tase',
+CombatTab:AddToggle({
+    Name    = "Anti-Tase",
     Default = true,
     Callback = function(val) Toggles.AntiTase = val end,
 })
 
-TeamsBox:AddButton({
-    Text = 'Join Criminals',
-    Func = function()
+CombatTab:AddSection({ Name = "Teams" })
+
+CombatTab:AddButton({
+    Name = "Join Criminals",
+    Callback = function()
         TeamAPI.ChangeTeam(TeamAPI.Teams.Criminals)
-        Library:Notify('Joined Criminals!', 3)
+        OrionLib:MakeNotification({ Name="Team", Content="Joined Criminals!", Image="rbxassetid://4483362458", Time=3 })
     end,
 })
 
-TeamsBox:AddButton({
-    Text = 'Join Guards',
-    Func = function()
+CombatTab:AddButton({
+    Name = "Join Guards",
+    Callback = function()
         TeamAPI.ChangeTeam(TeamAPI.Teams.Guards)
-        Library:Notify('Joined Guards!', 3)
+        OrionLib:MakeNotification({ Name="Team", Content="Joined Guards!", Image="rbxassetid://4483362458", Time=3 })
     end,
 })
 
--- WEAPONS TAB
-GunsBox:AddToggle('AutoGuns', {
-    Text    = 'Auto Get Guns',
+-- ── WEAPONS TAB ──
+WeaponsTab:AddSection({ Name = "Auto Guns" })
+
+WeaponsTab:AddToggle({
+    Name    = "Auto Get Guns",
     Default = false,
     Callback = function(val) Toggles.AutoGuns = val end,
 })
 
-GunsBox:AddButton({ Text = 'Get AK-47',        Func = function() GetGun("AK-47") end })
-GunsBox:AddButton({ Text = 'Get Remington 870', Func = function() GetGun("Remington 870") end })
-GunsBox:AddButton({ Text = 'Get M9',            Func = function() GetGun("M9") end })
+WeaponsTab:AddButton({ Name = "Get AK-47",         Callback = function() GetGun("AK-47") end })
+WeaponsTab:AddButton({ Name = "Get Remington 870",  Callback = function() GetGun("Remington 870") end })
+WeaponsTab:AddButton({ Name = "Get M9",             Callback = function() GetGun("M9") end })
 
-MeleeBox:AddButton({
-    Text = 'Break All Toilets',
-    Func = function()
+WeaponsTab:AddSection({ Name = "Melee" })
+
+WeaponsTab:AddButton({
+    Name = "Break All Toilets",
+    Callback = function()
         BreakAllToilets()
-        Library:Notify('Breaking all toilets!', 3)
+        OrionLib:MakeNotification({ Name="Melee", Content="Breaking all toilets!", Image="rbxassetid://4483362458", Time=3 })
     end,
 })
 
-MeleeBox:AddToggle('BreakToilets', {
-    Text    = 'Auto Break on Hammer',
+WeaponsTab:AddToggle({
+    Name    = "Auto Break on Hammer Equip",
     Default = false,
     Callback = function(val) Toggles.BreakToilets = val end,
 })
 
--- UTILITY TAB
-MoveBox:AddToggle('InfiniteStamina', {
-    Text    = 'Infinite Stamina',
+-- ── UTILITY TAB ──
+UtilityTab:AddSection({ Name = "Movement" })
+
+UtilityTab:AddToggle({
+    Name    = "Infinite Stamina",
     Default = false,
     Callback = function(val)
         Toggles.InfiniteStamina = val
@@ -567,14 +577,14 @@ MoveBox:AddToggle('InfiniteStamina', {
     end,
 })
 
-MoveBox:AddToggle('OpenDoors', {
-    Text    = 'Auto Open Doors',
+UtilityTab:AddToggle({
+    Name    = "Auto Open Doors",
     Default = false,
     Callback = function(val) Toggles.OpenDoors = val end,
 })
 
-MoveBox:AddToggle('NoClipDoors', {
-    Text    = 'Doors NoClip',
+UtilityTab:AddToggle({
+    Name    = "Doors NoClip",
     Default = false,
     Callback = function(val)
         Toggles.NoClipDoors = val
@@ -582,37 +592,36 @@ MoveBox:AddToggle('NoClipDoors', {
     end,
 })
 
-TeleBox:AddButton({
-    Text = 'Teleport to Crim Base',
-    Func = function()
+UtilityTab:AddSection({ Name = "Teleport" })
+
+UtilityTab:AddButton({
+    Name = "Teleport to Crim Base",
+    Callback = function()
         Teleport(CFrame.new(-927,94,2055))
-        Library:Notify('Teleporting to Crim Base!', 3)
+        OrionLib:MakeNotification({ Name="Teleport", Content="Going to Crim Base!", Image="rbxassetid://4483362458", Time=3 })
     end,
 })
 
-TeleBox:AddButton({
-    Text = 'Teleport to Yard',
-    Func = function()
+UtilityTab:AddButton({
+    Name = "Teleport to Yard",
+    Callback = function()
         Teleport(CFrame.new(832,98,2510))
-        Library:Notify('Teleporting to Yard!', 3)
+        OrionLib:MakeNotification({ Name="Teleport", Content="Going to Yard!", Image="rbxassetid://4483362458", Time=3 })
     end,
 })
 
--- SERVER TAB
-ServerBox:AddButton({
-    Text = 'Hop to Lowest Ping Server',
-    Func = function()
-        Library:Notify('Finding best server...', 4)
+-- ── SERVER TAB ──
+ServerTab:AddSection({ Name = "Server Management" })
+
+ServerTab:AddButton({
+    Name = "Hop to Lowest Ping Server",
+    Callback = function()
+        OrionLib:MakeNotification({ Name="Server", Content="Finding best server...", Image="rbxassetid://4483362458", Time=4 })
         task.spawn(JoinLowestPingServer)
     end,
 })
 
-ServerBox:AddLabel(isMobile and '📱 Mobile device detected' or '🖥️ PC device detected')
-
--- Theme setup
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
-ThemeManager:ApplyToTab(Tabs.Server)
+ServerTab:AddLabel(isMobile and "📱 Mobile device detected" or "🖥️ PC device detected")
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- HEARTBEAT LOOPS
@@ -682,5 +691,13 @@ end)
 pcall(function() TeamAPI.ChangeTeam(TeamAPI.Teams.Criminals) end)
 AutoOpenDoors()
 
-Library:Notify('Prison Life Hub loaded! ' .. (isMobile and '📱 Mobile' or '🖥️ PC'), 5)
-print("Prison Life Hub loaded | LinoriaLib | Mobile: " .. tostring(isMobile) .. " | user: 2_ll1 | 🇧🇷")
+OrionLib:MakeNotification({
+    Name    = "Prison Life Hub",
+    Content = (isMobile and "📱 Mobile" or "🖥️ PC") .. " | Loaded! Made by xtel",
+    Image   = "rbxassetid://4483362458",
+    Time    = 5,
+})
+
+OrionLib:Init()
+
+print("Prison Life Hub | OrionLib | Mobile: " .. tostring(isMobile) .. " | user: 2_ll1 | 🇧🇷")
