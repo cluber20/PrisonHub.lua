@@ -1,6 +1,7 @@
 --[[
     Prison Life Hub - Mobile Optimized
-    UI: Rayfield | Mobile Aimbot included
+    UI: LinoriaLib (Delta Compatible)
+    Mobile Aimbot included
     Made by xtel
 ]]
 
@@ -11,7 +12,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TeleportService   = game:GetService("TeleportService")
 local HttpService       = game:GetService("HttpService")
 local UserInputService  = game:GetService("UserInputService")
-local StarterGui        = game:GetService("StarterGui")
 local LocalPlayer       = Players.LocalPlayer
 local Teams             = game:GetService("Teams")
 local Camera            = workspace.Camera
@@ -49,10 +49,44 @@ local Settings = {
     AimbotTeamCheck = true,
 }
 
--- Load Rayfield
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- ═══════════════════════════════════════════════════════════════════════════
+-- LOAD LINORIA (Delta Compatible)
+-- ═══════════════════════════════════════════════════════════════════════════
 
--- Remotes (safe pcall wrapped)
+local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
+
+local Library      = loadstring(game:HttpGet(repo .. 'Library.lua'))()
+local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))()
+local SaveManager  = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
+
+local Window = Library:CreateWindow({
+    Title    = 'Prison Life Hub',
+    Center   = true,
+    AutoShow = true,
+})
+
+local Tabs = {
+    Aimbot  = Window:AddTab('Aimbot'),
+    Combat  = Window:AddTab('Combat'),
+    Weapons = Window:AddTab('Weapons'),
+    Utility = Window:AddTab('Utility'),
+    Server  = Window:AddTab('Server'),
+}
+
+local AimbotBox  = Tabs.Aimbot:AddLeftGroupbox('Aimbot')
+local AimbotCfg  = Tabs.Aimbot:AddRightGroupbox('Settings')
+local CombatBox  = Tabs.Combat:AddLeftGroupbox('Combat')
+local TeamsBox   = Tabs.Combat:AddRightGroupbox('Teams')
+local GunsBox    = Tabs.Weapons:AddLeftGroupbox('Auto Guns')
+local MeleeBox   = Tabs.Weapons:AddRightGroupbox('Melee')
+local MoveBox    = Tabs.Utility:AddLeftGroupbox('Movement')
+local TeleBox    = Tabs.Utility:AddRightGroupbox('Teleport')
+local ServerBox  = Tabs.Server:AddLeftGroupbox('Server')
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- REMOTES
+-- ═══════════════════════════════════════════════════════════════════════════
+
 local TeamEvent, isArrested, ArrestPlayer, PlayerTased
 
 pcall(function()
@@ -79,7 +113,7 @@ local TeamAPI = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- AIMBOT SYSTEM (Mobile Optimised)
+-- AIMBOT
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function GetAimbotPart(targetChar)
@@ -104,7 +138,6 @@ local function GetClosestPlayerToCenter()
     local closestPlayer = nil
     local closestDist   = Settings.AimbotFOV
     local screenCenter  = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-
     for _, player in pairs(Players:GetPlayers()) do
         if IsValidTarget(player) then
             local part = GetAimbotPart(player.Character)
@@ -134,11 +167,9 @@ local function StartAimbot()
         AimbotTarget = GetClosestPlayerToCenter()
         if AimbotTarget and AimbotTarget.Character then
             local part = GetAimbotPart(AimbotTarget.Character)
-            if part then
-                if not Toggles.AimbotSilent then
-                    local targetCF = CFrame.new(Camera.CFrame.Position, part.Position)
-                    Camera.CFrame  = Camera.CFrame:Lerp(targetCF, Settings.AimbotSmoothing)
-                end
+            if part and not Toggles.AimbotSilent then
+                local targetCF = CFrame.new(Camera.CFrame.Position, part.Position)
+                Camera.CFrame  = Camera.CFrame:Lerp(targetCF, Settings.AimbotSmoothing)
             end
         end
     end)
@@ -168,7 +199,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- NAMECALL HOOK (GetAttributes + Silent Aim)
+-- NAMECALL HOOK
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local namecall
@@ -234,8 +265,7 @@ local function Teleport(TargetCFrame, Char)
         Char.Humanoid:ChangeState(Enum.HumanoidStateType.Dead)
         Char.Humanoid.Name = "Valid"
     end
-    local RP
-    local Conn
+    local RP, Conn
     Conn = LocalPlayer.CharacterAdded:Connect(function(NewChar)
         RP = NewChar:WaitForChild("HumanoidRootPart")
         RP.CFrame = TargetCFrame
@@ -413,166 +443,122 @@ local function JoinLowestPingServer()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- RAYFIELD UI
+-- UI ELEMENTS
 -- ═══════════════════════════════════════════════════════════════════════════
 
-local Window = Rayfield:CreateWindow({
-    Name                   = "Prison Life Hub",
-    Icon                   = 0,
-    LoadingTitle           = "Prison Life Hub",
-    LoadingSubtitle        = "Mobile Ready | by xtel",
-    Theme                  = "DarkBlue",
-    DisableRayfieldPrompts = false,
-    DisableBuildWarnings   = false,
-    ConfigurationSaving    = { Enabled = false },
-    KeySystem              = false,
-})
-
-local AimbotTab  = Window:CreateTab("🎯 Aimbot",  4483362458)
-local MainTab    = Window:CreateTab("⚔️ Combat",  4483362458)
-local WeaponsTab = Window:CreateTab("🔫 Weapons", 4483362458)
-local UtilityTab = Window:CreateTab("🔧 Utility", 4483362458)
-local ServerTab  = Window:CreateTab("🌐 Server",  4483362458)
-
 -- AIMBOT TAB
-AimbotTab:CreateSection("Aimbot")
-
-AimbotTab:CreateToggle({
-    Name         = "Enable Aimbot",
-    CurrentValue = false,
-    Flag         = "Aimbot",
-    Callback     = function(val)
+AimbotBox:AddToggle('Aimbot', {
+    Text    = 'Enable Aimbot',
+    Default = false,
+    Callback = function(val)
         Toggles.Aimbot = val
         if val then StartAimbot() else StopAimbot() end
-        Rayfield:Notify({ Title="Aimbot", Content=val and "Aimbot ON" or "Aimbot OFF", Duration=2 })
+        Library:Notify(val and 'Aimbot ON' or 'Aimbot OFF', 2)
     end,
 })
 
-AimbotTab:CreateToggle({
-    Name         = "Silent Aim (No Camera Snap)",
-    CurrentValue = false,
-    Flag         = "AimbotSilent",
-    Callback     = function(val) Toggles.AimbotSilent = val end,
+AimbotBox:AddToggle('AimbotSilent', {
+    Text    = 'Silent Aim',
+    Default = false,
+    Callback = function(val) Toggles.AimbotSilent = val end,
 })
 
-AimbotTab:CreateToggle({
-    Name         = "Team Check (skip teammates)",
-    CurrentValue = true,
-    Flag         = "AimbotTeamCheck",
-    Callback     = function(val) Settings.AimbotTeamCheck = val end,
+AimbotBox:AddToggle('AimbotTeamCheck', {
+    Text    = 'Team Check',
+    Default = true,
+    Callback = function(val) Settings.AimbotTeamCheck = val end,
 })
 
-AimbotTab:CreateSection("Settings")
-
-AimbotTab:CreateSlider({
-    Name         = "FOV Radius",
-    Range        = {50, 500},
-    Increment    = 10,
-    Suffix       = "px",
-    CurrentValue = Settings.AimbotFOV,
-    Flag         = "AimbotFOV",
-    Callback     = function(val) Settings.AimbotFOV = val end,
+AimbotCfg:AddSlider('AimbotFOV', {
+    Text     = 'FOV Radius',
+    Default  = 150,
+    Min      = 50,
+    Max      = 500,
+    Rounding = 0,
+    Callback = function(val) Settings.AimbotFOV = val end,
 })
 
-AimbotTab:CreateSlider({
-    Name         = "Smoothing",
-    Range        = {1, 10},
-    Increment    = 1,
-    Suffix       = "",
-    CurrentValue = 3,
-    Flag         = "AimbotSmooth",
-    Callback     = function(val) Settings.AimbotSmoothing = val / 10 end,
+AimbotCfg:AddSlider('AimbotSmooth', {
+    Text     = 'Smoothing',
+    Default  = 3,
+    Min      = 1,
+    Max      = 10,
+    Rounding = 0,
+    Callback = function(val) Settings.AimbotSmoothing = val / 10 end,
 })
 
-AimbotTab:CreateDropdown({
-    Name          = "Target Part",
-    Options       = {"Head", "HumanoidRootPart", "Torso", "Upper Torso"},
-    CurrentOption = {"Head"},
-    Flag          = "AimbotPart",
-    Callback      = function(option) Settings.AimbotPart = option[1] end,
+AimbotCfg:AddDropdown('AimbotPart', {
+    Values   = {'Head', 'HumanoidRootPart', 'Torso', 'Upper Torso'},
+    Default  = 1,
+    Text     = 'Target Part',
+    Callback = function(val) Settings.AimbotPart = val end,
 })
 
 -- COMBAT TAB
-MainTab:CreateSection("Combat")
-
-MainTab:CreateToggle({
-    Name         = "Auto Arrest",
-    CurrentValue = false,
-    Flag         = "AutoArrest",
-    Callback     = function(val) Toggles.AutoArrest = val end,
+CombatBox:AddToggle('AutoArrest', {
+    Text    = 'Auto Arrest',
+    Default = false,
+    Callback = function(val) Toggles.AutoArrest = val end,
 })
 
-MainTab:CreateToggle({
-    Name         = "Anti-Arrest (JapaDo)",
-    CurrentValue = false,
-    Flag         = "AntiArrest",
-    Callback     = function(val) Toggles.AntiArrest = val end,
+CombatBox:AddToggle('AntiArrest', {
+    Text    = 'Anti-Arrest (JapaDo)',
+    Default = false,
+    Callback = function(val) Toggles.AntiArrest = val end,
 })
 
-MainTab:CreateToggle({
-    Name         = "Anti-Tase",
-    CurrentValue = true,
-    Flag         = "AntiTase",
-    Callback     = function(val) Toggles.AntiTase = val end,
+CombatBox:AddToggle('AntiTase', {
+    Text    = 'Anti-Tase',
+    Default = true,
+    Callback = function(val) Toggles.AntiTase = val end,
 })
 
-MainTab:CreateSection("Teams")
-
-MainTab:CreateButton({
-    Name     = "Join Criminals",
-    Callback = function()
+TeamsBox:AddButton({
+    Text = 'Join Criminals',
+    Func = function()
         TeamAPI.ChangeTeam(TeamAPI.Teams.Criminals)
-        Rayfield:Notify({ Title="Team", Content="Joined Criminals!", Duration=3 })
+        Library:Notify('Joined Criminals!', 3)
     end,
 })
 
-MainTab:CreateButton({
-    Name     = "Join Guards",
-    Callback = function()
+TeamsBox:AddButton({
+    Text = 'Join Guards',
+    Func = function()
         TeamAPI.ChangeTeam(TeamAPI.Teams.Guards)
-        Rayfield:Notify({ Title="Team", Content="Joined Guards!", Duration=3 })
+        Library:Notify('Joined Guards!', 3)
     end,
 })
 
 -- WEAPONS TAB
-WeaponsTab:CreateSection("Auto Guns")
-
-WeaponsTab:CreateToggle({
-    Name         = "Auto Get Guns (AK-47, Remington, M9)",
-    CurrentValue = false,
-    Flag         = "AutoGuns",
-    Callback     = function(val) Toggles.AutoGuns = val end,
+GunsBox:AddToggle('AutoGuns', {
+    Text    = 'Auto Get Guns',
+    Default = false,
+    Callback = function(val) Toggles.AutoGuns = val end,
 })
 
-WeaponsTab:CreateButton({ Name="Get AK-47 Now",         Callback=function() GetGun("AK-47") end })
-WeaponsTab:CreateButton({ Name="Get Remington 870 Now",  Callback=function() GetGun("Remington 870") end })
-WeaponsTab:CreateButton({ Name="Get M9 Now",             Callback=function() GetGun("M9") end })
+GunsBox:AddButton({ Text = 'Get AK-47',        Func = function() GetGun("AK-47") end })
+GunsBox:AddButton({ Text = 'Get Remington 870', Func = function() GetGun("Remington 870") end })
+GunsBox:AddButton({ Text = 'Get M9',            Func = function() GetGun("M9") end })
 
-WeaponsTab:CreateSection("Melee")
-
-WeaponsTab:CreateButton({
-    Name     = "Break All Toilets",
-    Callback = function()
+MeleeBox:AddButton({
+    Text = 'Break All Toilets',
+    Func = function()
         BreakAllToilets()
-        Rayfield:Notify({ Title="Toilets", Content="Attempted to break all toilets!", Duration=3 })
+        Library:Notify('Breaking all toilets!', 3)
     end,
 })
 
-WeaponsTab:CreateToggle({
-    Name         = "Auto Break on Hammer Equip",
-    CurrentValue = false,
-    Flag         = "BreakToilets",
-    Callback     = function(val) Toggles.BreakToilets = val end,
+MeleeBox:AddToggle('BreakToilets', {
+    Text    = 'Auto Break on Hammer',
+    Default = false,
+    Callback = function(val) Toggles.BreakToilets = val end,
 })
 
 -- UTILITY TAB
-UtilityTab:CreateSection("Movement")
-
-UtilityTab:CreateToggle({
-    Name         = "Infinite Stamina",
-    CurrentValue = false,
-    Flag         = "InfiniteStamina",
-    Callback     = function(val)
+MoveBox:AddToggle('InfiniteStamina', {
+    Text    = 'Infinite Stamina',
+    Default = false,
+    Callback = function(val)
         Toggles.InfiniteStamina = val
         if val and LocalPlayer.Character then
             local Hum = LocalPlayer.Character:FindFirstChild("Humanoid")
@@ -581,53 +567,52 @@ UtilityTab:CreateToggle({
     end,
 })
 
-UtilityTab:CreateToggle({
-    Name         = "Auto Open Doors",
-    CurrentValue = false,
-    Flag         = "OpenDoors",
-    Callback     = function(val) Toggles.OpenDoors = val end,
+MoveBox:AddToggle('OpenDoors', {
+    Text    = 'Auto Open Doors',
+    Default = false,
+    Callback = function(val) Toggles.OpenDoors = val end,
 })
 
-UtilityTab:CreateToggle({
-    Name         = "Doors NoClip",
-    CurrentValue = false,
-    Flag         = "NoClipDoors",
-    Callback     = function(val)
+MoveBox:AddToggle('NoClipDoors', {
+    Text    = 'Doors NoClip',
+    Default = false,
+    Callback = function(val)
         Toggles.NoClipDoors = val
         if val then DoorsHandler() end
     end,
 })
 
-UtilityTab:CreateSection("Teleport")
-
-UtilityTab:CreateButton({
-    Name     = "Teleport → Crim Base",
-    Callback = function()
+TeleBox:AddButton({
+    Text = 'Teleport to Crim Base',
+    Func = function()
         Teleport(CFrame.new(-927,94,2055))
-        Rayfield:Notify({ Title="Teleport", Content="Going to Criminal Base!", Duration=3 })
+        Library:Notify('Teleporting to Crim Base!', 3)
     end,
 })
 
-UtilityTab:CreateButton({
-    Name     = "Teleport → Yard",
-    Callback = function()
+TeleBox:AddButton({
+    Text = 'Teleport to Yard',
+    Func = function()
         Teleport(CFrame.new(832,98,2510))
-        Rayfield:Notify({ Title="Teleport", Content="Going to Yard!", Duration=3 })
+        Library:Notify('Teleporting to Yard!', 3)
     end,
 })
 
 -- SERVER TAB
-ServerTab:CreateSection("Server Management")
-
-ServerTab:CreateButton({
-    Name     = "Hop to Lowest Ping Server",
-    Callback = function()
-        Rayfield:Notify({ Title="Server Hop", Content="Finding best server...", Duration=4 })
+ServerBox:AddButton({
+    Text = 'Hop to Lowest Ping Server',
+    Func = function()
+        Library:Notify('Finding best server...', 4)
         task.spawn(JoinLowestPingServer)
     end,
 })
 
-ServerTab:CreateLabel(isMobile and "📱 Mobile device detected" or "🖥️ PC device detected")
+ServerBox:AddLabel(isMobile and '📱 Mobile device detected' or '🖥️ PC device detected')
+
+-- Theme setup
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+ThemeManager:ApplyToTab(Tabs.Server)
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- HEARTBEAT LOOPS
@@ -641,9 +626,9 @@ RunService.Heartbeat:Connect(function()
     if not Humanoid then return end
     Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
     if Toggles.AutoGuns then
-        if not GetTool("AK-47")         then task.spawn(GetGun,"AK-47") end
-        if not GetTool("Remington 870") then task.spawn(GetGun,"Remington 870") end
-        if not GetTool("M9")            then task.spawn(GetGun,"M9") end
+        if not GetTool("AK-47")         then task.spawn(GetGun, "AK-47") end
+        if not GetTool("Remington 870") then task.spawn(GetGun, "Remington 870") end
+        if not GetTool("M9")            then task.spawn(GetGun, "M9") end
     end
     if Toggles.NoClipDoors then DoorsHandler() end
 end)
@@ -697,10 +682,5 @@ end)
 pcall(function() TeamAPI.ChangeTeam(TeamAPI.Teams.Criminals) end)
 AutoOpenDoors()
 
-Rayfield:Notify({
-    Title    = "Prison Life Hub",
-    Content  = (isMobile and "📱 Mobile mode active! " or "🖥️ PC mode active! ") .. "Loaded by xtel",
-    Duration = 5,
-})
-
-print("Prison Life Hub loaded | Mobile: " .. tostring(isMobile) .. " | user: 2_ll1 | 🇧🇷")
+Library:Notify('Prison Life Hub loaded! ' .. (isMobile and '📱 Mobile' or '🖥️ PC'), 5)
+print("Prison Life Hub loaded | LinoriaLib | Mobile: " .. tostring(isMobile) .. " | user: 2_ll1 | 🇧🇷")
